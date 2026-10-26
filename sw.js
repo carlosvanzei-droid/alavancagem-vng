@@ -1,5 +1,5 @@
 /* Alavancagem VNG — service worker: abre o app mesmo com sinal fraco; dados sempre vêm do servidor. */
-var CACHE = 'alav-v1';
+var CACHE = 'alav-v2';
 var SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png', '/icons/apple-touch-icon.png',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'];
 self.addEventListener('install', function(e){
@@ -12,6 +12,7 @@ self.addEventListener('fetch', function(e){
   var req = e.request, url = new URL(req.url);
   if(req.method !== 'GET' || url.hostname.endsWith('supabase.co')) return;
   if(req.mode === 'navigate'){
+    if(url.pathname !== '/' && url.pathname !== '/index.html') return;
     e.respondWith(fetch(req).then(function(r){ var cp=r.clone(); caches.open(CACHE).then(function(c){ c.put('/', cp); }); return r; })
       .catch(function(){ return caches.match('/'); }));
     return;

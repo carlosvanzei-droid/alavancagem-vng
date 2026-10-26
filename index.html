@@ -153,6 +153,18 @@ tr.sel td{background:var(--cobre-soft)}
 pre.json{font-size:12px;background:var(--card-2);border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto;max-height:360px;white-space:pre-wrap}
 .loading{color:var(--muted);padding:20px 0;font-size:14px}
 .foot2{font-size:12px;color:var(--muted);margin-top:24px}
+.drivebar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px}
+.drivebar .st{display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
+.prog{margin-top:8px;font-size:13px;color:var(--ink-2);max-height:220px;overflow:auto;width:100%}
+.prog div{padding:2px 0;border-bottom:1px dashed var(--line)}
+.prog .ok{color:var(--good)} .prog .er{color:var(--bad)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--cobre);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.linkbox{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--cobre-soft);border-radius:12px;padding:12px;margin:10px 0}
+.linkbox input{flex:1 1 260px;font-size:14px;min-height:40px;background:var(--card)}
+.steps{margin:8px 0 0;padding-left:20px;font-size:14px;color:var(--ink-2)}
+.steps li{margin:4px 0}
+code{font-size:13px;background:var(--card-2);border:1px solid var(--line);border-radius:6px;padding:1px 5px;overflow-wrap:anywhere}
 @media (max-width:560px){
   h1{font-size:18px}
   .kpi .v{font-size:18px}
@@ -274,7 +286,9 @@ var LBL = {
   doc:{available:'Disponível',missing:'Faltando',expired:'Vencido',needs_review:'Revisar',inconsistent:'Inconsistente'},
   gar:{pending:'Pendente',verified:'Verificada',eligible:'Elegível',rejected:'Recusada'},
   debt:{active:'Ativa',settled:'Quitada',renegotiated:'Renegociada'},
-  job:{queued:'Na fila',processing:'Processando',completed:'Concluída',failed:'Falhou',blocked_missing_secret:'Sem chave de API'}
+  job:{queued:'Na fila',processing:'Processando',completed:'Concluída',failed:'Falhou',blocked_missing_secret:'Sem chave de API'},
+  ext:{not_applicable:'—',pending:'Na fila',extracted:'Lido',needs_review:'Revisar',failed:'Erro na leitura',skipped:'Não lido'},
+  sync:{never:'Nunca sincronizado',running:'Sincronizando',ok:'Sincronizado',partial:'Sincronizado em parte',error:'Erro'}
 };
 var CHIPK = {
   run:{calculated:'',needs_reconciliation:'bad',ready_for_ai:'good',completed:'good'},
@@ -283,8 +297,11 @@ var CHIPK = {
   doc:{available:'good',missing:'bad',expired:'bad',needs_review:'warn',inconsistent:'bad'},
   gar:{pending:'warn',verified:'good',eligible:'good',rejected:'bad'},
   debt:{active:'cobre',settled:'good',renegotiated:'warn'},
-  job:{queued:'cobre',processing:'warn',completed:'good',failed:'bad',blocked_missing_secret:'bad'}
+  job:{queued:'cobre',processing:'warn',completed:'good',failed:'bad',blocked_missing_secret:'bad'},
+  ext:{not_applicable:'',pending:'cobre',extracted:'good',needs_review:'warn',failed:'bad',skipped:''},
+  sync:{never:'',running:'cobre',ok:'good',partial:'warn',error:'bad'}
 };
+function driveChip(r){ return r && r.source_document_id ? ' <span class="chip cobre" title="Lido automaticamente do Google Drive">Drive</span>' : ''; }
 function chip(group, v){ return '<span class="chip '+((CHIPK[group]||{})[v]||'')+'">'+esc((LBL[group]||{})[v]||v||'—')+'</span>'; }
 
 /* ============ ENTIDADES (CRUD genérico) ============ */
@@ -314,7 +331,7 @@ var ENT = {
       {k:'equity',l:'Patrimônio líquido',t:'money'}
     ],
     cols:[
-      ['Período',function(r){ return fmtDate(r.period_start)+' a '+fmtDate(r.period_end); }],
+      ['Período',function(r){ return fmtDate(r.period_start)+' a '+fmtDate(r.period_end)+driveChip(r); }],
       ['Receita líquida',function(r){ return brlc(r.net_revenue); },1],
       ['EBITDA',function(r){ return r.ebitda!=null ? brlc(r.ebitda) : (r.operating_profit!=null ? brlc(r.operating_profit)+' <span class="chip">LO</span>' : '—'); },1],
       ['Lucro líquido',function(r){ return brlc(r.net_income); },1],
@@ -335,7 +352,7 @@ var ENT = {
       {k:'status',l:'Situação',t:'select',opts:'debt',def:'active'}
     ],
     cols:[
-      ['Credor',function(r){ return '<b>'+esc(r.creditor||'—')+'</b><div class="hint" style="margin:0">'+esc(r.product_type||'')+'</div>'; }],
+      ['Credor',function(r){ return '<b>'+esc(r.creditor||'—')+'</b>'+driveChip(r)+'<div class="hint" style="margin:0">'+esc(r.product_type||'')+'</div>'; }],
       ['Saldo',function(r){ return brl(r.outstanding_balance); },1],
       ['Parcela',function(r){ return r.installment_amount==null ? '<span class="chip warn">sem parcela</span>' : brl(r.installment_amount); },1],
       ['Restantes',function(r){ return r.installments_remaining==null?'—':r.installments_remaining; },1],
@@ -358,7 +375,7 @@ var ENT = {
       {k:'verification_status',l:'Verificação',t:'select',opts:'gar',def:'pending',h:'Só garantias "Verificada" ou "Elegível" contam no score.'}
     ],
     cols:[
-      ['Garantia',function(r){ return '<b>'+esc(r.guarantee_type)+'</b><div class="hint" style="margin:0">'+esc(r.description||r.registry_number||'')+'</div>'; }],
+      ['Garantia',function(r){ return '<b>'+esc(r.guarantee_type)+'</b>'+driveChip(r)+'<div class="hint" style="margin:0">'+esc(r.description||r.registry_number||'')+'</div>'; }],
       ['Mercado',function(r){ return brlc(r.market_value); },1],
       ['Elegível',function(r){ return brlc(guarElig(r)); },1],
       ['Verificação',function(r){ return chip('gar', r.verification_status); }]
@@ -375,7 +392,10 @@ var ENT = {
       {k:'status',l:'Situação',t:'select',opts:'doc',def:'available'}
     ],
     cols:[
-      ['Documento',function(r){ return '<b>'+esc(r.name)+'</b><div class="hint" style="margin:0">'+esc(r.category)+'</div>'; }],
+      ['Documento',function(r){ return '<b>'+esc(r.name)+'</b>'+(r.source_type==='google_drive'?' <span class="chip cobre">Drive</span>':'')+'<div class="hint" style="margin:0">'+esc(r.category)+(r.folder_path?' · '+esc(r.folder_path):'')+'</div>'+
+        (r.extracted_data&&r.extracted_data.summary?'<div class="hint" style="margin:0;color:var(--ink-2)">'+esc(r.extracted_data.summary)+'</div>':'')+
+        (r.extraction_error?'<div class="hint" style="margin:0;color:var(--bad)">'+esc(r.extraction_error)+'</div>':''); }],
+      ['Leitura',function(r){ return r.extraction_status&&r.extraction_status!=='not_applicable' ? chip('ext', r.extraction_status) : '—'; }],
       ['Validade',function(r){
         if(!r.expires_at) return '—';
         var exp = r.expires_at < todayISO(), soon = !exp && (new Date(r.expires_at) - new Date()) < 30*864e5;
@@ -384,7 +404,7 @@ var ENT = {
       ['Situação',function(r){ return chip('doc', r.status); }],
       ['',function(r){ return r.source_url ? '<a href="'+esc(r.source_url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">abrir</a>' : ''; }]
     ],
-    hint:'O score conta categorias diferentes de documentos disponíveis e dentro da validade: 1 = 3 pts, 2+ = 7, 5+ = 11, 8+ = 15.'
+    hint:'O score conta categorias diferentes de documentos disponíveis e dentro da validade: 1 = 3 pts, 2+ = 7, 5+ = 11, 8+ = 15. Só documentos "Disponível" e dentro da validade aparecem no Kit Banco.'
   }
 };
 function guarElig(r){
@@ -517,7 +537,7 @@ function viewCompanies(main){
     res[1].data.forEach(function(s){ snap[s.company_id]=s; });
     res[2].data.forEach(function(s){ if(!sc[s.company_id]) sc[s.company_id]=s; });
     var cos = res[0].data;
-    var h = '<div class="row between" style="margin-bottom:12px"><h2 style="margin:0">Empresas</h2>'+(canWrite()?'<button type="button" class="primary" id="newCo">Nova empresa</button>':'')+'</div><div id="newCoBox"></div>';
+    var h = '<div class="row between" style="margin-bottom:12px"><h2 style="margin:0">Empresas</h2>'+(canWrite()?'<div class="actions"><button type="button" class="ghost" id="syncAllBtn">Sincronizar tudo com o Drive</button><button type="button" class="primary" id="newCo">Nova empresa</button></div>':'')+'</div><div id="syncAllBox"></div><div id="newCoBox"></div>';
     if(!cos.length) h += '<section class="card"><p class="empty">Nenhuma empresa cadastrada.'+(canWrite()?' Toque em "Nova empresa" para começar.':'')+'</p></section>';
     else h += '<div class="companies">'+cos.map(function(c){
       var s=snap[c.id]||{}, l=sc[c.id];
@@ -531,6 +551,15 @@ function viewCompanies(main){
     }).join('')+'</div>';
     main.innerHTML = h;
     var nb = $('#newCo'); if(nb) nb.addEventListener('click', function(){ companyForm($('#newCoBox'), null); });
+    var sa = $('#syncAllBtn');
+    if(sa) sa.addEventListener('click', function(){
+      sa.disabled=true; sa.innerHTML='<span class="spin"></span> Sincronizando…';
+      var bx=$('#syncAllBox'); bx.className='card';
+      driveConfig().then(function(c){
+        if(!c.google || !c.anthropic){ bx.innerHTML='<p class="msg err">Falta configurar '+(!c.google?'a conta do Google':'')+(!c.google&&!c.anthropic?' e ':'')+(!c.anthropic?'a chave da Anthropic':'')+'. Veja a tela Equipe.</p>'; sa.disabled=false; sa.textContent='Sincronizar tudo com o Drive'; return; }
+        return syncAll(bx).then(function(){ sa.textContent='Concluído — atualizando…'; setTimeout(route, 1500); });
+      });
+    });
   });
 }
 var CO_FIELDS = [
@@ -571,7 +600,7 @@ function companyForm(box, co){
 }
 
 /* ============ EMPRESA ============ */
-var TABS = [['resumo','Resumo'],['credito','Crédito'],['balanco','Balanço / DRE'],['faturamento','Faturamento'],['dividas','Dívidas'],['garantias','Garantias'],['documentos','Documentos'],['pendencias','Pendências']];
+var TABS = [['resumo','Resumo'],['credito','Crédito'],['kit','Kit Banco'],['balanco','Balanço / DRE'],['faturamento','Faturamento'],['dividas','Dívidas'],['garantias','Garantias'],['documentos','Documentos'],['pendencias','Pendências']];
 function viewCompany(main, id, tab, sub){
   main.innerHTML = '<div class="loading">Carregando…</div>';
   Promise.all([
@@ -584,14 +613,16 @@ function viewCompany(main, id, tab, sub){
       '<div class="crumbs"><a href="#/">Empresas</a><span>›</span><span>'+esc(co.trade_name||co.legal_name)+'</span></div>'+
       '<div class="row between" style="margin-bottom:10px;align-items:flex-start"><div class="grow"><h2 style="font-size:20px;margin:0">'+esc(co.trade_name||co.legal_name)+'</h2>'+
       '<div class="hint" style="margin:0">'+esc(co.trade_name?co.legal_name+' · ':'')+esc(co.tax_id||'sem CNPJ')+(co.drive_folder_url?' · <a href="'+esc(co.drive_folder_url)+'" target="_blank" rel="noopener">pasta no Drive</a>':'')+'</div></div>'+
-      (canWrite()?'<button type="button" class="ghost" id="editCo">Editar</button>':'')+'</div><div id="coEditBox"></div>'+
+      (canWrite()?'<button type="button" class="ghost" id="editCo">Editar</button>':'')+'</div><div id="coEditBox"></div><div id="driveBar"></div>'+
       '<nav class="tabs">'+TABS.map(function(t){ return '<a href="#/empresa/'+id+'/'+t[0]+'" class="'+(t[0]===tab?'on':'')+'">'+t[1]+(t[0]==='pendencias'&&snap.open_pending_items?'<span class="n">'+snap.open_pending_items+'</span>':'')+'</a>'; }).join('')+'</nav>'+
       '<div id="tabBox"></div>';
     var eb=$('#editCo'); if(eb) eb.addEventListener('click', function(){ companyForm($('#coEditBox'), co); });
+    renderDriveBar($('#driveBar'), co);
     var box = $('#tabBox');
     var refresh = function(){};
     if(tab==='resumo') tabResumo(box, co, snap);
     else if(tab==='credito') tabCredito(box, co, sub);
+    else if(tab==='kit') tabKit(box, co, sub);
     else if(tab==='balanco') renderEntity(box, 'financial_periods', id, refresh);
     else if(tab==='faturamento') tabFaturamento(box, co);
     else if(tab==='dividas') renderEntity(box, 'debts', id, refresh);
@@ -726,6 +757,7 @@ function requestDetail(box, co, rq){
     if(canWrite()) h += '<div class="actions" style="margin-top:14px;border-top:1px solid var(--line);padding-top:14px">'+
       '<label for="reRate" style="margin:0">Taxa (% a.m.)</label><input id="reRate" inputmode="decimal" style="width:90px" value="'+esc(NF2.format(((rat.assumed_monthly_rate!=null?rat.assumed_monthly_rate:0.02))*100))+'">'+
       '<button type="button" class="ghost" id="recalc">Recalcular</button>'+
+      '<a class="ghost" href="#/empresa/'+co.id+'/kit/'+rq.id+'" style="display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:10px;padding:8px 12px;min-height:38px;font-weight:700;font-size:14px;text-decoration:none;color:var(--ink-2)">Gerar Kit Banco</a>'+
       '<button type="button" class="primary" id="sendAI"'+(run&&run.status==='ready_for_ai'?'':' disabled title="Disponível quando o status for Pronto para revisão por IA"')+'>Enviar para revisão por IA</button>'+
       '<span class="msg" id="rdMsg"></span></div>';
     h += '</section>';
@@ -797,6 +829,147 @@ function requestDetail(box, co, rq){
   });
 }
 function alertMsg(t){ var m=$('#rdMsg'); if(m) showMsg(m,t,'err'); }
+
+/* ============ GOOGLE DRIVE ============ */
+function callFn(name, body){
+  return SB.functions.invoke(name, {body: body}).then(function(r){
+    if(!r.error) return r.data;
+    var ctx = r.error.context;
+    if(ctx && typeof ctx.json === 'function') return ctx.json().then(function(j){ throw new Error(j && j.error || r.error.message); }, function(){ throw new Error(r.error.message); });
+    throw new Error(r.error.message);
+  });
+}
+var DRIVE_CFG = null;
+function driveConfig(){
+  if(DRIVE_CFG) return Promise.resolve(DRIVE_CFG);
+  return callFn('drive-sync', {action:'config'}).then(function(c){ DRIVE_CFG=c; return c; }).catch(function(){ return {google:false, anthropic:false}; });
+}
+// scan -> extract (em lotes) -> finish. log(texto, classe) recebe o progresso.
+function syncCompany(coId, log){
+  log = log || function(){};
+  var runId=null, total=0, done=0;
+  return callFn('drive-sync', {action:'scan', company_id:coId}).then(function(s){
+    runId=s.run_id; total=s.pending;
+    log(s.found+' arquivo(s) na pasta · '+s.new+' novo(s)'+(s.changed?' · '+s.changed+' alterado(s)':'')+(s.missing?' · '+s.missing+' removido(s)':'')+' · '+s.pending+' para ler');
+    function step(){
+      return callFn('drive-sync', {action:'extract', company_id:coId, run_id:runId, max:2}).then(function(x){
+        (x.results||[]).forEach(function(r){ done++; log((r.ok?'✓ ':'✗ ')+r.name+(r.ok?' — '+(r.category||'')+(r.applied?' · '+r.applied+' dado(s) gravado(s)':''):' — '+r.error), r.ok?'ok':'er'); });
+        if(x.remaining>0 && x.processed>0) { log('Lendo… '+done+' de '+total); return step(); }
+      });
+    }
+    return total ? step() : null;
+  }).then(function(){
+    log('Recalculando o score…');
+    return callFn('drive-sync', {action:'finish', company_id:coId, run_id:runId});
+  }).then(function(f){ log(f.message, f.status==='ok'?'ok':''); return f; });
+}
+function renderDriveBar(box, co){
+  if(!box) return;
+  if(!co.drive_folder_url){
+    box.innerHTML = '<div class="drivebar"><span class="hint" style="margin:0">Sem pasta do Google Drive. '+(canWrite()?'Toque em Editar e cole o link da pasta da empresa para ler os documentos automaticamente.':'')+'</span></div>';
+    return;
+  }
+  box.innerHTML = '<div class="drivebar"><div class="st"><b>Google Drive</b>'+chip('sync', co.drive_sync_status)+
+    '<span class="hint" style="margin:0">'+(co.drive_last_sync_at?'última: '+fmtDT(co.drive_last_sync_at):'')+(co.drive_sync_message?' · '+esc(co.drive_sync_message):'')+'</span></div>'+
+    (canWrite()?'<button type="button" class="ghost" id="syncBtn">Sincronizar com o Drive</button>':'')+'<div class="prog" id="syncLog" hidden></div></div>';
+  var b=$('#syncBtn', box); if(!b) return;
+  b.addEventListener('click', function(){
+    var lg=$('#syncLog', box); lg.hidden=false; lg.innerHTML='';
+    b.disabled=true; b.innerHTML='<span class="spin"></span> Sincronizando…';
+    var add=function(t,c){ var d=document.createElement('div'); if(c) d.className=c; d.textContent=t; lg.appendChild(d); lg.scrollTop=lg.scrollHeight; };
+    syncCompany(co.id, add).then(function(){ b.textContent='Concluído — atualizando…'; setTimeout(route, 1200); })
+      .catch(function(e){ add(e.message,'er'); b.disabled=false; b.textContent='Tentar de novo'; });
+  });
+}
+function syncAll(box){
+  var lg=document.createElement('div'); lg.className='prog'; box.innerHTML=''; box.appendChild(lg);
+  var add=function(t,c){ var d=document.createElement('div'); if(c) d.className=c; d.textContent=t; lg.appendChild(d); lg.scrollTop=lg.scrollHeight; };
+  var p = S.org.drive_root_folder_url ? callFn('drive-sync',{action:'discover', org_id:S.org.id}).then(function(r){
+    add('Pasta-mãe: '+r.folders+' subpasta(s) · '+r.created+' empresa(s) criada(s) · '+r.linked+' ligada(s) a empresas existentes', 'ok');
+  }) : Promise.resolve();
+  return p.then(function(){
+    return SB.from('companies').select('id,legal_name,trade_name,drive_folder_url').eq('organization_id', S.org.id).not('drive_folder_url','is',null).order('legal_name');
+  }).then(function(r){
+    var cos=r.data||[];
+    if(!cos.length){ add('Nenhuma empresa com pasta do Drive.','er'); return; }
+    var i=0;
+    function next(){
+      if(i>=cos.length) return Promise.resolve();
+      var c=cos[i++]; add('▸ '+(c.trade_name||c.legal_name)+' ('+i+' de '+cos.length+')');
+      return syncCompany(c.id, function(t,k){ add('   '+t,k); }).catch(function(e){ add('   '+e.message,'er'); }).then(next);
+    }
+    return next();
+  }).then(function(){ add('Tudo pronto.','ok'); }).catch(function(e){ add(e.message,'er'); });
+}
+
+/* ============ KIT BANCO ============ */
+function kitUrl(k){ return location.origin + '/kit/' + k.token; }
+function kitState(k){
+  if(k.revoked_at) return ['Revogado',''];
+  if(new Date(k.expires_at) < new Date()) return ['Expirado','warn'];
+  return ['Ativo','good'];
+}
+function tabKit(box, co, reqId, created){
+  box.innerHTML = '<div class="loading">Carregando…</div>';
+  Promise.all([
+    SB.from('bank_kits').select('*').eq('company_id', co.id).order('created_at',{ascending:false}),
+    SB.from('credit_requests').select('id,purpose,requested_amount,desired_term_months,status').eq('company_id', co.id).order('created_at',{ascending:false}),
+    SB.from('documents').select('id',{count:'exact',head:true}).eq('company_id', co.id).eq('status','available')
+  ]).then(function(res){
+    if(res[0].error){ box.innerHTML='<p class="msg err">'+esc(errText(res[0].error))+'</p>'; return; }
+    var kits=res[0].data, reqs=res[1].data||[], ndocs=res[2].count||0;
+    var h='<section class="card"><h2>Gerar link para banco</h2>'+
+      '<p class="hint" style="margin:0 0 12px">O banco abre o link sem login e vê: cadastro, pedido de crédito, faturamento, balanço/DRE, endividamento, garantias e os '+ndocs+' documento(s) disponíveis para baixar. Score, pendências e análises internas não aparecem. Cada link vale para um banco, por 30 dias, e pode ser revogado.</p>';
+    if(canWrite()){
+      h+='<form class="form" id="kitForm" autocomplete="off">'+
+        '<div><label for="kBank">Banco *</label><input id="kBank" required placeholder="ex.: Itaú, Santander, BTG"></div>'+
+        '<div><label for="kReq">Pedido de crédito</label><select id="kReq"><option value="">Nenhum (só a empresa)</option>'+
+          reqs.map(function(q){ return '<option value="'+q.id+'"'+(q.id===reqId?' selected':'')+'>'+esc((q.purpose||'Pedido')+' · '+brlc(q.requested_amount)+' · '+q.desired_term_months+'m')+'</option>'; }).join('')+'</select></div>'+
+        '<div><label for="kDays">Validade (dias)</label><input id="kDays" type="number" min="1" max="90" value="30"></div>'+
+        '<div class="full"><label for="kNote">Recado para o banco (opcional)</label><input id="kNote" maxlength="300" placeholder="ex.: Contato: Kadu, (11) 9…"></div>'+
+        '<div class="full actions"><button class="primary" type="submit">Gerar link</button><span class="msg" id="kMsg"></span></div></form><div id="kitNew"></div>';
+    }
+    h+='</section>';
+    h+='<section class="card"><h2>Links gerados</h2>'+(!kits.length?'<p class="empty">Nenhum link ainda.</p>':
+      '<div class="tablewrap"><table><thead><tr><th>Banco</th><th>Criado</th><th>Validade</th><th class="num">Aberturas</th><th class="num">Downloads</th><th>Situação</th><th></th></tr></thead><tbody>'+
+      kits.map(function(k){ var st=kitState(k), live=st[0]==='Ativo';
+        return '<tr><td><b>'+esc(k.bank_name)+'</b>'+(k.note?'<div class="hint" style="margin:0">'+esc(k.note)+'</div>':'')+'</td><td>'+fmtDate(k.created_at)+'</td><td>'+fmtDate(k.expires_at)+'</td>'+
+          '<td class="num">'+k.view_count+(k.last_viewed_at?'<div class="hint" style="margin:0">'+fmtDT(k.last_viewed_at)+'</div>':'')+'</td><td class="num">'+k.download_count+'</td><td><span class="chip '+st[1]+'">'+st[0]+'</span></td>'+
+          '<td class="num">'+(live?'<button type="button" class="ghost kCopy" data-u="'+esc(kitUrl(k))+'" style="min-height:30px;padding:4px 10px">Copiar</button> <a class="ghost" href="'+esc(kitUrl(k))+'" target="_blank" rel="noopener" style="font-size:13px;font-weight:700">abrir</a>'+
+            (canWrite()?' <button type="button" class="danger kRev" data-id="'+k.id+'" style="min-height:30px;padding:4px 10px;font-size:13px">Revogar</button>':''):'')+'</td></tr>'; }).join('')+
+      '</tbody></table></div>')+'</section>';
+    box.innerHTML=h;
+    $$('.kCopy', box).forEach(function(b){ b.addEventListener('click', function(){ copyText(b.dataset.u).then(function(){ b.textContent='Copiado'; setTimeout(function(){ b.textContent='Copiar'; },1500); }); }); });
+    $$('.kRev', box).forEach(function(b){ armDelete(b, function(){ SB.rpc('revoke_bank_kit',{p_kit_id:b.dataset.id}).then(function(){ tabKit(box, co); }); }); });
+    var f=$('#kitForm');
+    if(f) f.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var msg=$('#kMsg'), days=parseInt($('#kDays').value,10)||30;
+      showMsg(msg,'Gerando…');
+      SB.rpc('create_bank_kit', {p_company_id:co.id, p_bank_name:$('#kBank').value.trim(), p_credit_request_id:$('#kReq').value||null, p_days:days, p_note:$('#kNote').value.trim()||null}).then(function(r){
+        if(r.error){ showMsg(msg, errText(r.error), 'err'); return; }
+        var k=Array.isArray(r.data)?r.data[0]:r.data;
+        tabKit(box, co, reqId, k);
+      });
+    });
+    if(created) showNewKit(co, created);
+  });
+}
+function showNewKit(co, k){
+  var t=$('#kitNew'); if(!t) return;
+  var u=kitUrl(k);
+  var text='Olá! Segue o kit de crédito da '+(co.trade_name||co.legal_name)+' com faturamento, demonstrações, endividamento e documentos para download: '+u+' (válido até '+fmtDate(k.expires_at)+').';
+  t.innerHTML='<p class="msg ok" style="margin:12px 0 0">Link criado para '+esc(k.bank_name)+'. Envie para o gerente:</p><div class="linkbox"><input id="kUrl" readonly value="'+esc(u)+'"><button type="button" class="primary" id="kCp">Copiar link</button>'+
+    '<a class="ghost" target="_blank" rel="noopener" href="https://wa.me/?text='+encodeURIComponent(text)+'" style="font-weight:700;font-size:14px">WhatsApp</a>'+
+    '<a class="ghost" href="mailto:?subject='+encodeURIComponent('Kit de crédito — '+co.legal_name)+'&body='+encodeURIComponent(text)+'" style="font-weight:700;font-size:14px">E-mail</a>'+
+    '<a class="ghost" target="_blank" rel="noopener" href="'+esc(u)+'" style="font-weight:700;font-size:14px">Ver como o banco vê</a></div>';
+  $('#kCp').addEventListener('click', function(){ copyText(u).then(function(){ $('#kCp').textContent='Copiado!'; }); });
+}
+function copyText(t){
+  if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).catch(function(){ return fallbackCopy(t); });
+  return Promise.resolve(fallbackCopy(t));
+}
+function fallbackCopy(t){ var i=document.createElement('textarea'); i.value=t; document.body.appendChild(i); i.select(); try{ document.execCommand('copy'); }catch(e){} i.remove(); }
 
 /* ============ FATURAMENTO ============ */
 function monthAdd(ym, n){ var p=ym.split('-'), d=new Date(+p[0], +p[1]-1+n, 1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
@@ -948,6 +1121,13 @@ function viewTeam(main){
         (inv.length?'<h3>Aguardando cadastro</h3>'+inv.map(function(i){ return '<div class="pitem"><div class="grow"><div class="t">'+esc(i.email)+'</div><div class="d">'+LBL.role[i.role]+' · liberado em '+fmtDate(i.created_at)+'</div></div><button type="button" class="ghost iDel" data-e="'+esc(i.email)+'">Cancelar</button></div>'; }).join(''):'')+
         '</section>';
     }
+    if(isAdmin()){
+      h+='<section class="card"><h2>Google Drive</h2><div id="driveCfg"><p class="hint">Verificando configuração…</p></div>'+
+        '<form class="form" id="rootForm" autocomplete="off" style="margin-top:12px"><div class="full"><label for="rootUrl">Pasta-mãe das empresas (link do Drive)</label>'+
+        '<input id="rootUrl" type="url" placeholder="https://drive.google.com/drive/folders/…" value="'+esc(S.org.drive_root_folder_url||'')+'">'+
+        '<p class="h">Cada subpasta vira uma empresa. Empresas que já existem com o mesmo nome são ligadas à subpasta, sem duplicar.</p></div>'+
+        '<div class="full actions"><button class="primary" type="submit">Salvar</button><span class="msg" id="rootMsg"></span></div></form></section>';
+    }
     h+='<section class="card"><h2>Papéis</h2><div class="pitem"><div><div class="t">Owner</div><div class="d">Tudo, inclusive gerenciar membros e apagar a organização.</div></div></div>'+
       '<div class="pitem"><div><div class="t">Admin</div><div class="d">Edita dados, apaga empresas e libera analistas e leitores.</div></div></div>'+
       '<div class="pitem"><div><div class="t">Analista</div><div class="d">Cadastra e edita dados, cria pedidos e calcula scores.</div></div></div>'+
@@ -962,6 +1142,23 @@ function viewTeam(main){
     $$('.iDel').forEach(function(b){ b.addEventListener('click', function(){
       SB.from('organization_invites').delete().eq('organization_id',S.org.id).eq('email',b.dataset.e).then(function(){ viewTeam(main); });
     }); });
+    var rf=$('#rootForm');
+    if(rf) rf.addEventListener('submit', function(ev){
+      ev.preventDefault();
+      var v=$('#rootUrl').value.trim()||null, msg=$('#rootMsg');
+      if(v && !/drive\.google\.com|^[A-Za-z0-9_-]{20,}$/.test(v)){ showMsg(msg,'Cole o link de uma pasta do Google Drive.','err'); return; }
+      SB.from('organizations').update({drive_root_folder_url:v}).eq('id',S.org.id).then(function(r){
+        if(r.error){ showMsg(msg, errText(r.error), 'err'); return; }
+        S.org.drive_root_folder_url=v; showMsg(msg,'Salvo. Agora use "Sincronizar tudo com o Drive" na tela de empresas.','ok');
+      });
+    });
+    if($('#driveCfg')) driveConfig().then(function(c){
+      var ok=function(b){ return b?'<span class="chip good">configurado</span>':'<span class="chip bad">falta configurar</span>'; };
+      $('#driveCfg').innerHTML='<div class="pitem"><div class="grow"><div class="t">Conta de serviço do Google '+ok(c.google)+'</div>'+
+        (c.service_account_email?'<div class="d">Compartilhe a pasta-mãe (como Leitor) com: <code>'+esc(c.service_account_email)+'</code> <button type="button" class="linkbtn" id="cpSa">copiar</button></div>':'<div class="d">Cadastre o secret GOOGLE_SERVICE_ACCOUNT_JSON no Supabase.</div>')+'</div></div>'+
+        '<div class="pitem"><div class="grow"><div class="t">Leitura dos documentos (Claude) '+ok(c.anthropic)+'</div><div class="d">'+(c.anthropic?'Modelo: '+esc(c.model||''):'Cadastre o secret ANTHROPIC_API_KEY no Supabase.')+'</div></div></div>';
+      var cp=$('#cpSa'); if(cp) cp.addEventListener('click', function(){ copyText(c.service_account_email).then(function(){ cp.textContent='copiado'; }); });
+    });
     var f=$('#invForm');
     if(f) f.addEventListener('submit', function(ev){
       ev.preventDefault(); var msg=$('#iMsg'); showMsg(msg,'Liberando…');
@@ -975,9 +1172,9 @@ function viewTeam(main){
 
 /* ============ SESSÃO / ORGANIZAÇÕES ============ */
 function loadOrgs(){
-  return SB.from('organization_members').select('organization_id, role, organizations(id,name)').eq('user_id', S.user.id).then(function(r){
+  return SB.from('organization_members').select('organization_id, role, organizations(id,name,drive_root_folder_url)').eq('user_id', S.user.id).then(function(r){
     if(r.error) throw r.error;
-    S.orgs = (r.data||[]).filter(function(m){ return m.organizations; }).map(function(m){ return {id:m.organization_id, name:m.organizations.name, role:m.role}; })
+    S.orgs = (r.data||[]).filter(function(m){ return m.organizations; }).map(function(m){ return {id:m.organization_id, name:m.organizations.name, role:m.role, drive_root_folder_url:m.organizations.drive_root_folder_url}; })
       .sort(function(a,b){ return a.name.localeCompare(b.name); });
   });
 }

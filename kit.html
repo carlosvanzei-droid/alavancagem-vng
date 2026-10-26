@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kit de Crédito</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Cinzel:wght@700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#F1EBE3; --card:#FBF8F3; --card-2:#F4EEE5; --ink:#23272B; --ink-2:#4A443E; --muted:#7A716A; --line:#DCD3C6;
+  --cobre:#B87333; --cobre-soft:#F3E4D3; --good:#2F8F5B; --bad:#C94A3B;
+  --font-body:Manrope,"Segoe UI",Arial,sans-serif; --font-display:Cinzel,Georgia,serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{color-scheme:dark;--bg:#17191C;--card:#1F2226;--card-2:#262A2F;--ink:#EDE7DE;--ink-2:#CFC7BB;--muted:#9A928A;--line:#3A3E44;--cobre:#D08A48;--cobre-soft:#3A2D20;--good:#5CC48A;--bad:#E5705F}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-top:env(safe-area-inset-top,0px)}
+.wrap{max-width:1000px;margin:0 auto;padding:20px 16px 48px}
+header.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}
+.kicker{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cobre)}
+h1{font-family:var(--font-display);font-size:24px;line-height:1.2;margin:4px 0 2px;text-wrap:balance}
+.sub{color:var(--muted);font-size:14px;margin:0}
+h2{font-size:16px;font-weight:800;margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.kpi .l{font-size:12px;color:var(--muted);font-weight:700}
+.kpi .v{font-size:20px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
+.kpi .s{font-size:12px;color:var(--muted)}
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th{font-size:12px;color:var(--cobre);text-align:left;padding:6px 8px;border-bottom:1px solid var(--cobre);white-space:nowrap}
+td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num,th.num{text-align:right;white-space:nowrap}
+tr.total td{font-weight:800;border-top:1.5px solid var(--ink)}
+.btn{display:inline-flex;align-items:center;gap:6px;font:inherit;font-weight:700;font-size:14px;border-radius:10px;padding:9px 14px;cursor:pointer;border:1.5px solid var(--ink);background:transparent;color:var(--ink);text-decoration:none;min-height:40px}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn.small{padding:5px 10px;min-height:32px;font-size:13px}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.cat{font-size:12px;font-weight:800;color:var(--cobre);text-transform:uppercase;letter-spacing:.04em;margin:14px 0 6px}
+.doc{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.doc:last-child{border-bottom:0}
+.doc .n{font-weight:700;overflow-wrap:anywhere}
+.doc .m{font-size:12px;color:var(--muted)}
+.chartbox svg{width:100%;height:auto;display:block}
+.empty{color:var(--muted);font-size:14px}
+.msgbox{max-width:480px;margin:15vh auto;text-align:center;padding:24px}
+.foot{font-size:12px;color:var(--muted);margin-top:24px}
+.note{background:var(--cobre-soft);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:14px}
+@media print{
+  body{background:#fff;color:#000}
+  .card,.kpi{break-inside:avoid;border-color:#ccc;background:#fff}
+  .noprint{display:none!important}
+  .wrap{max-width:none;padding:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="msgbox"><p class="sub">Carregando o kit…</p></div></div>
+<script>
+(function(){
+'use strict';
+var API = 'https://zeohuenaslyqpkzhvrqj.supabase.co/functions/v1/bank-kit';
+var token = (location.pathname.match(/\/kit\/([A-Za-z0-9_-]{20,})/) || [])[1] || new URLSearchParams(location.search).get('t');
+var $app = document.getElementById('app');
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+var NF0 = new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0});
+function brl(v){ if(v==null||v==='') return '—'; v=+v; return (v<0?'−':'')+'R$ '+NF0.format(Math.abs(v)); }
+function brlc(v){ if(v==null||v==='') return '—'; v=+v; var a=Math.abs(v),s=v<0?'−':''; if(a>=1e6) return s+'R$ '+(a/1e6).toLocaleString('pt-BR',{maximumFractionDigits:2})+' mi'; if(a>=1e4) return s+'R$ '+NF0.format(a/1e3)+' mil'; return brl(v); }
+function fmtDate(s){ if(!s) return '—'; var p=String(s).slice(0,10).split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+var MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+function fmtMonth(s){ var p=String(s).split('-'); return MESES[+p[1]-1]+'/'+p[0].slice(2); }
+function size(b){ if(!b) return ''; return b>=1048576 ? (b/1048576).toLocaleString('pt-BR',{maximumFractionDigits:1})+' MB' : NF0.format(Math.max(1,b/1024))+' KB'; }
+function fail(msg){ document.title='Kit de Crédito'; $app.innerHTML='<div class="msgbox card"><h2>'+esc(msg)+'</h2><p class="sub">Entre em contato com a empresa para receber um novo link.</p></div>'; }
+
+if(!token){ fail('Link inválido.'); return; }
+fetch(API+'?t='+encodeURIComponent(token)).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); }).then(function(x){
+  if(!x.ok){ fail(x.j && x.j.error || 'Não foi possível abrir o kit.'); return; }
+  render(x.j);
+}).catch(function(){ fail('Não foi possível abrir o kit. Verifique sua conexão.'); });
+
+function dl(id){ return API+'?t='+encodeURIComponent(token)+'&doc='+encodeURIComponent(id); }
+
+function render(d){
+  var c=d.company||{}, name=c.trade_name||c.legal_name||'Empresa';
+  document.title = 'Kit de Crédito · '+name;
+  var h='';
+  h+='<header class="top"><div><div class="kicker">Kit de crédito'+(d.kit.bank_name?' · '+esc(d.kit.bank_name):'')+'</div><h1>'+esc(c.legal_name||name)+'</h1>'+
+     '<p class="sub">'+(c.trade_name&&c.trade_name!==c.legal_name?esc(c.trade_name)+' · ':'')+'CNPJ '+esc(c.tax_id||'—')+(d.presented_by?' · apresentado por '+esc(d.presented_by):'')+'</p></div>'+
+     '<div class="actions noprint">'+(d.documents.length?'<a class="btn primary" href="'+API+'?t='+encodeURIComponent(token)+'&zip=1">Baixar todos os documentos</a>':'')+'<button class="btn" onclick="window.print()">Imprimir / PDF</button></div></header>';
+  if(d.kit.note) h+='<div class="note">'+esc(d.kit.note)+'</div>';
+
+  var g=d.guarantees||[], gTotal=g.reduce(function(s,x){ return s+(+x.market_value||0); },0);
+  var fp=(d.financial_periods||[])[0];
+  h+='<div class="kpis">';
+  if(d.request) h+=kpi('Crédito solicitado', brlc(d.request.requested_amount), d.request.desired_term_months+' meses'+(d.request.purpose?' · '+esc(d.request.purpose):''));
+  h+=kpi('Faturamento (últimos 12 meses)', brlc(d.revenue_summary.total), d.revenue_summary.months?'média '+brl(d.revenue_summary.average)+'/mês · '+d.revenue_summary.months+' meses':'não informado');
+  if(fp) h+=kpi('Lucro líquido', brlc(fp.net_income), fmtDate(fp.period_start)+' a '+fmtDate(fp.period_end));
+  if(fp) h+=kpi('Patrimônio líquido', brlc(fp.equity), 'em '+fmtDate(fp.period_end));
+  h+=kpi('Endividamento bancário', brlc(d.debt_total), (d.debts||[]).length+' operação(ões)');
+  if(g.length) h+=kpi('Garantias oferecidas', brlc(gTotal), g.length+' item(ns), valor de mercado');
+  h+='</div>';
+
+  // faturamento
+  var rv=d.monthly_revenue||[];
+  h+='<section class="card"><h2>Faturamento mensal</h2>';
+  if(!rv.length) h+='<p class="empty">Não informado.</p>';
+  else {
+    h+='<div class="chartbox">'+chart(rv)+'</div><div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Mês</th><th class="num">Faturamento</th></tr></thead><tbody>'+
+      rv.slice().reverse().map(function(m){ return '<tr><td>'+fmtMonth(m.month)+'</td><td class="num">'+brl(m.amount)+'</td></tr>'; }).join('')+'</tbody></table></div>';
+  }
+  h+='</section>';
+
+  // DRE / balanço
+  var P=(d.financial_periods||[]).slice(0,4);
+  h+='<section class="card"><h2>Demonstrações financeiras</h2>';
+  if(!P.length) h+='<p class="empty">Não informadas.</p>';
+  else {
+    var rows=[['DRE'],['Receita bruta','gross_revenue'],['Receita líquida','net_revenue'],['Lucro bruto','gross_profit'],['EBITDA','ebitda'],['Lucro operacional','operating_profit'],['Lucro líquido','net_income'],
+      ['Balanço'],['Ativo total','total_assets'],['Ativo circulante','current_assets'],['Caixa e equivalentes','cash_equivalents'],['Contas a receber','receivables'],['Estoques','inventory'],
+      ['Passivo circulante','current_liabilities'],['Passivo não circulante','noncurrent_liabilities'],['Empréstimos e financiamentos','financial_debt'],['Patrimônio líquido','equity']];
+    h+='<div class="tablewrap"><table><thead><tr><th></th>'+P.map(function(p){ return '<th class="num">'+fmtDate(p.period_start)+'<br>a '+fmtDate(p.period_end)+'</th>'; }).join('')+'</tr></thead><tbody>'+
+      rows.filter(function(r){ return !r[1] || P.some(function(p){ return p[r[1]]!=null; }); }).map(function(r){
+        if(!r[1]) return '<tr><td colspan="'+(P.length+1)+'" style="font-weight:800;color:var(--cobre);padding-top:12px">'+r[0]+'</td></tr>';
+        return '<tr><td>'+r[0]+'</td>'+P.map(function(p){ return '<td class="num">'+brl(p[r[1]])+'</td>'; }).join('')+'</tr>';
+      }).join('')+'</tbody></table></div>';
+  }
+  h+='</section>';
+
+  // endividamento
+  var D=d.debts||[];
+  h+='<section class="card"><h2>Endividamento bancário</h2>';
+  if(!D.length) h+='<p class="empty">Nenhuma operação informada.</p>';
+  else h+='<div class="tablewrap"><table><thead><tr><th>Instituição</th><th>Modalidade</th><th class="num">Saldo devedor</th><th class="num">Parcela</th><th class="num">Restantes</th><th>Ref.</th></tr></thead><tbody>'+
+    D.map(function(x){ return '<tr><td>'+esc(x.creditor)+'</td><td>'+esc(x.product_type||'—')+'</td><td class="num">'+brl(x.outstanding_balance)+'</td><td class="num">'+brl(x.installment_amount)+'</td><td class="num">'+(x.installments_remaining==null?'—':x.installments_remaining)+'</td><td>'+fmtDate(x.reference_date)+'</td></tr>'; }).join('')+
+    '<tr class="total"><td colspan="2">Total</td><td class="num">'+brl(d.debt_total)+'</td><td class="num">'+(D.some(function(x){ return x.installment_amount!=null; })?brl(D.reduce(function(s,x){ return s+(+x.installment_amount||0); },0)):'—')+'</td><td colspan="2"></td></tr></tbody></table></div>';
+  h+='</section>';
+
+  if(g.length){
+    h+='<section class="card"><h2>Garantias oferecidas</h2><div class="tablewrap"><table><thead><tr><th>Tipo</th><th>Descrição</th><th>Proprietário</th><th>Registro</th><th class="num">Valor de mercado</th><th class="num">Ônus</th></tr></thead><tbody>'+
+      g.map(function(x){ return '<tr><td>'+esc(x.guarantee_type)+'</td><td>'+esc(x.description||'—')+'</td><td>'+esc(x.owner_name||'—')+'</td><td>'+esc(x.registry_number||'—')+'</td><td class="num">'+brl(x.market_value)+'</td><td class="num">'+brl(x.existing_liens)+'</td></tr>'; }).join('')+
+      '</tbody></table></div></section>';
+  }
+
+  // documentos
+  var docs=d.documents||[];
+  h+='<section class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px"><h2 style="margin:0">Documentos ('+docs.length+')</h2>'+
+    (docs.length?'<a class="btn small noprint" href="'+API+'?t='+encodeURIComponent(token)+'&zip=1">Baixar tudo (.zip)</a>':'')+'</div>';
+  if(!docs.length) h+='<p class="empty">Nenhum documento disponível.</p>';
+  else {
+    var cat=null;
+    docs.forEach(function(x){
+      if(x.category!==cat){ cat=x.category; h+='<div class="cat">'+esc(cat||'Outros')+'</div>'; }
+      h+='<div class="doc"><div><div class="n">'+esc(x.name)+'</div><div class="m">'+[x.reference_date?'ref. '+fmtDate(x.reference_date):'', x.expires_at?'válido até '+fmtDate(x.expires_at):'', size(x.size)].filter(Boolean).join(' · ')+'</div></div>'+
+        '<a class="btn small noprint" href="'+dl(x.id)+'">Baixar</a></div>';
+    });
+  }
+  h+='</section>';
+  h+='<p class="foot">Informações e documentos fornecidos pela empresa. Link pessoal e intransferível, válido até '+fmtDate(d.kit.expires_at)+'. Gerado em '+new Date(d.generated_at).toLocaleString('pt-BR')+'.</p>';
+  $app.innerHTML=h;
+}
+function kpi(l,v,s){ return '<div class="kpi"><div class="l">'+esc(l)+'</div><div class="v">'+v+'</div>'+(s?'<div class="s">'+s+'</div>':'')+'</div>'; }
+function chart(rows){
+  var W=720,H=200,L=56,R=8,T=10,B=26, n=rows.length, cw=(W-L-R)/n, bw=Math.max(6,cw*0.62);
+  var max=Math.max.apply(null, rows.map(function(r){ return +r.amount; }).concat([1]));
+  var y=function(v){ return T+(H-T-B)*(1-v/max); };
+  var p=Math.pow(10,Math.floor(Math.log10(max/4||1))), q=(max/4)/p, step=(q<=1?1:q<=2?2:q<=5?5:10)*p, s='';
+  for(var v=0; v<=max*1.0001; v+=step) s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v).toFixed(1)+'" y2="'+y(v).toFixed(1)+'" stroke="var(--line)"/><text x="'+(L-6)+'" y="'+(y(v)+4).toFixed(1)+'" text-anchor="end" font-size="11" fill="var(--muted)">'+(v===0?'0':v>=1e6?(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi':NF0.format(v/1e3)+' mil')+'</text>';
+  rows.forEach(function(r,i){ var x=L+i*cw+(cw-bw)/2, v=+r.amount;
+    s+='<rect x="'+x.toFixed(1)+'" y="'+y(v).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(1,H-B-y(v)).toFixed(1)+'" rx="3" fill="var(--cobre)"><title>'+fmtMonth(r.month)+': '+brl(v)+'</title></rect>';
+    if(n<=12 || i%2===n%2 || i===n-1) s+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" font-size="11" fill="var(--muted)">'+fmtMonth(r.month)+'</text>';
+  });
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Faturamento mensal">'+s+'</svg>';
+}
+})();
+</script>
+</body>
+</html>
